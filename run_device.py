@@ -5,7 +5,7 @@ import time
 # GPIO settings
 GPIO.setwarnings(False)
 
-# Servo motor pin numbers and setup
+# servo motor pin numbers and setup
 servo_pin1 = 17
 servo_pin2 = 22
 servo_pin3 = 23

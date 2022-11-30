@@ -2,27 +2,23 @@
 import time
 import RPi.GPIO as GPIO
 
-# import libraries for user-interface using Tkinter
-from tkinter import *
-from tkinter.ttk import *
-
-
 # GPIO settings
 GPIO.setwarnings(False)
 
 # servo motor pin numbers and setup
 servo_pin1 = 17
 servo_pin2 = 22
-servo_pin3 = 23
+servo_pin3 = 15
 GPIO.setmode(GPIO.BCM)
 GPIO.setup(servo_pin1, GPIO.OUT)
 GPIO.setup(servo_pin2, GPIO.OUT)
 GPIO.setup(servo_pin3, GPIO.OUT)
-# motor variables
-pwm1 = GPIO.PWM(servo_pin1, 100)
-pwm2 = GPIO.PWM(servo_pin2, 100)
-pwm3 = GPIO.PWM(servo_pin3, 100)
 
+# lcd input pin number and setup
+
+# again button input pin number and setup; initally set as off
+again_but = 16
+GPIO.setup(again_but, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
 # pressure sensor input pin number and setup
 pressure_sens = 4
 GPIO.setup(pressure_sens, GPIO.IN)
@@ -39,6 +35,11 @@ def wash():
     # set inital variables
     touch = False
     stop_movement = False
+
+    # always reset frequency of pin back to 100
+    pwm1 = GPIO.PWM(servo_pin1, 100)
+    pwm2 = GPIO.PWM(servo_pin2, 100)
+    pwm3 = GPIO.PWM(servo_pin3, 100)
 
     # previous pressure input (no pressure detected)
     prev_input = 0
@@ -60,6 +61,7 @@ def wash():
     # dispenses water from water pump when there is shoe detected (from touch), begins wash cycle
     if touch:
         print('Start Wash Cycle')
+        print('Water Dispensed')
         time.sleep(1)  # 1 sec lag before water is dispensed
         GPIO.output(water_pump, True)
         time.sleep(1)
@@ -68,7 +70,7 @@ def wash():
 
     # count num of rotations (currently at 10 rotations)
     rotation = 0
-    num_rotate = 10
+    num_rotate = 4
 
     # runs servo motors
     while touch and rotation <= num_rotate:
@@ -81,6 +83,8 @@ def wash():
 
         # if there is pressure, moves motors
         if ((not prev_input) and input):
+            print('Start Wash')
+
             # refreshes again
             input = GPIO.input(pressure_sens)
 
@@ -100,6 +104,7 @@ def wash():
                         pwm2.stop()
                         pwm3.stop()
                         touch = False
+                        print('Your shoes are Klean!')
                         return
                     left_rotation = False
                 else:
@@ -113,6 +118,7 @@ def wash():
                         pwm2.stop()
                         pwm3.stop()
                         touch = False
+                        print('Your shoes are Klean!')
                         return
                     left_rotation = True
 
@@ -123,6 +129,7 @@ def wash():
             pwm2.stop()
             pwm3.stop()
             touch = False
+            print('No Shoe Detected')
             return
         return
     return
@@ -131,59 +138,62 @@ def wash():
 # first start cycle run function
 def start():
     # detects if there is shoe/pressure on pressure sensor
-    input = GPIO.input(4)
+    input = GPIO.input(pressure_sens)
 
     # if there is no pressure, it keeps refreshing until there is shoe detected
     while input != 1:
-        input = GPIO.input(4)
+        input = GPIO.input(pressure_sens)
 
     # when there is a shoe detected, it runs the wash function / starts washing the shoe
     if input == 1:
-        wash()
+        wash()  # one initial wash cycle
+    return
 
 
 # asks user if they want another cycle function
 def again():
-    # reinforce user-interface page style
-    welcome.title('Sketchy Klean')
-    welcome_page = ttk.Frame(welcome, padding=10)
-    welcome_page.grid()
+    # detects if the button is pressed
+    input = GPIO.input(again_but)
 
-    # text that ask if user wants another wash
-    ttk.Label(welcome_page, text='Another wash?').grid(row=1, column=0)
+    # gets out of the loop if button is pressed but no shoe is detected
+    if input == 1 and GPIO.input(pressure_sens) == 0:
+        return
 
-    # button for another wash to start, if the button is pressed, it goes to the wash function (by command)
-    Button(welcome_page, text='Yes', command=wash).grid(row=2, column=0)
+    # asks user for input
+    print("Wash again? Yes- press the button.")
+    print("If not, take out your Klean shoes and press the button.")
+
+    # if there is button pressed, it keeps detecting/refreshing for button input
+    while input != 1:
+        input = GPIO.input(again_but)
+        now_time = time.time()
+
+    # if button is pressed, it does another wash cycle and ask for this loop again
+    # this ensures that users can choose to continue to wash multiple times
+    if input == 1:
+        wash()
+        again()
+    return
+
+
+def countdown(t):
+    while t:
+        mins, secs = divmod(t, 60)
+        timer = '{:02d}:{:02d}'.format(mins, secs)
+        print(timer)
+        time.sleep(1)
+        t -= 1
+    print('Your shoes are clean!')
 
 
 # main run
 try:
     while True:  # when device is running/open
-        # creates new user-interface page called welcome
-        welcome = Tk()
-
-        # set style of welcome
-        welcome.geometry('500x500')
-        welcome.title('Sketchy Klean')
-
-        # sets text section of welcome as welcome_page in grid
-        welcome_page = ttk.Frame(welcome, padding=10)
-        welcome_page.grid()
-
-        # add text/label
-        ttk.Label(welcome_page, text='Welcome to Sketchy Klean!').grid(
-            row=0, column=0)
-        ttk.Label(welcome_page, text='Please place your shoe on the stand to start.').grid(
-            row=1, column=0)
-
-        # in tkinter, you need the mainloop() to display the interface page but mainloop would block all th code after
-        # to run the page along with the code, you can use the after() method
-        welcome.after(500, start)
-        welcome.after(500, again)
-        # this runs the start and again method 500 milliseconds after the display with mainloop()
-
-        # displays interface page
-        mainloop()
+        print("Start Device")
+        start()
+        again()
+        print('Close Device')
+        break
 
 except KeyboardInterrupt:
     pass

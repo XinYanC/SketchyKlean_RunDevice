@@ -194,7 +194,6 @@ try:
         again()
         print('Close Device')
         break
-
 except KeyboardInterrupt:
     pass
 finally:

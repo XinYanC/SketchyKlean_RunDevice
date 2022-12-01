@@ -2,6 +2,10 @@
 import time
 import RPi.GPIO as GPIO
 
+# import lcd screen signal library
+from signal import signal, SIGTERM, SIGHUP, pause
+from rpi_lcd import LCD
+
 # GPIO settings
 GPIO.setwarnings(False)
 
@@ -14,7 +18,8 @@ GPIO.setup(servo_pin1, GPIO.OUT)
 GPIO.setup(servo_pin2, GPIO.OUT)
 GPIO.setup(servo_pin3, GPIO.OUT)
 
-# lcd input pin number and setup
+# create lcd variable
+lcd = LCD()
 
 # again button input pin number and setup; initally set as off
 again_but = 16
@@ -60,6 +65,9 @@ def wash():
 
     # dispenses water from water pump when there is shoe detected (from touch), begins wash cycle
     if touch:
+        lcd.clear()
+        lcd.text('Start Cycle:', 1)
+        lcd.text('Water Dispensed', 2)
         print('Start Wash Cycle')
         print('Water Dispensed')
         time.sleep(1)  # 1 sec lag before water is dispensed
@@ -83,6 +91,8 @@ def wash():
 
         # if there is pressure, moves motors
         if ((not prev_input) and input):
+            lcd.clear()
+            lcd.text('Start Wash', 1)
             print('Start Wash')
 
             # refreshes again
@@ -104,6 +114,8 @@ def wash():
                         pwm2.stop()
                         pwm3.stop()
                         touch = False
+                        lcd.clear()
+                        lcd.text('Your shoes are clean!', 1)
                         print('Your shoes are Klean!')
                         return
                     left_rotation = False
@@ -118,6 +130,8 @@ def wash():
                         pwm2.stop()
                         pwm3.stop()
                         touch = False
+                        lcd.clear()
+                        lcd.text('Your shoes are clean!', 1)
                         print('Your shoes are Klean!')
                         return
                     left_rotation = True
@@ -129,6 +143,8 @@ def wash():
             pwm2.stop()
             pwm3.stop()
             touch = False
+            lcd.clear()
+            lcd.text('No Shoe Detected', 1)
             print('No Shoe Detected')
             return
         return
@@ -160,6 +176,9 @@ def again():
         return
 
     # asks user for input
+    lcd.clear()
+    lcd.text('Wash Again?', 1)
+    lcd.text('-Press Continue-', 2)
     print("Wash again? Yes- press the button.")
     print("If not, take out your Klean shoes and press the button.")
 
@@ -176,25 +195,40 @@ def again():
     return
 
 
-def countdown(t):
-    while t:
-        mins, secs = divmod(t, 60)
-        timer = '{:02d}:{:02d}'.format(mins, secs)
-        print(timer)
-        time.sleep(1)
-        t -= 1
-    print('Your shoes are clean!')
+# stop lcd display screen function
+def safe_exit(signum, frame):
+    exit(1)
 
 
 # main run
 try:
     while True:  # when device is running/open
-        print("Start Device")
+        # sets signal to lcd screen
+        signal(SIGTERM, safe_exit)
+        signal(SIGHUP, safe_exit)
+
+        # display text on lcd screen that device is open
+        lcd.text('Open Device', 1)
+
+        print('Start Device')
+
+        # start inital wash cycle
         start()
+        # scans for potential repetition wash
         again()
+
+        # clears screen before new print
+        lcd.clear()
+
+        # display text on lcd screen that device is closed
+        lcd.text('Close Device', 1)
+
         print('Close Device')
+
+        pause()
         break
 except KeyboardInterrupt:
     pass
 finally:
     GPIO.cleanup
+    lcd.clear()

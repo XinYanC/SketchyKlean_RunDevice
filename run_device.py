@@ -78,7 +78,7 @@ def wash():
 
     # count num of rotations (currently at 10 rotations)
     rotation = 0
-    num_rotate = 4
+    num_rotate = 20
 
     # runs servo motors
     while touch and rotation <= num_rotate:
@@ -102,11 +102,13 @@ def wash():
             left_rotation = False
             now_time = time.time()
             end_time = time.time() + 2
+            frequency_left = 25
+            frequency_right = 10
             while now_time != end_time and rotation != num_rotate:
                 if left_rotation:
-                    pwm1.start(25)
-                    pwm2.start(25)
-                    pwm3.start(25)
+                    pwm1.start(frequency_left)
+                    pwm2.start(frequency_left)
+                    pwm3.start(frequency_left)
                     time.sleep(1)
                     rotation += 1
                     if rotation == num_rotate:
@@ -120,9 +122,9 @@ def wash():
                         return
                     left_rotation = False
                 else:
-                    pwm1.start(10)
-                    pwm2.start(10)
-                    pwm3.start(10)
+                    pwm1.start(frequency_right)
+                    pwm2.start(frequency_right)
+                    pwm3.start(frequency_right)
                     time.sleep(1)
                     rotation += 1
                     if rotation == num_rotate:
